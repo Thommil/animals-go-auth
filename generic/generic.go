@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"github.com/thommil/animals-go-common/model"
 )
 
@@ -18,5 +19,9 @@ type Provider struct {
 // Authenticate implementation of Provider API
 func (provider Provider) Authenticate(token string) (*model.User, error) {
 	user := model.User{ID: "titi"}
+	jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return []byte("AllYourBase"), nil
+	})
+
 	return &user, nil
 }

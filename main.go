@@ -10,8 +10,9 @@ import (
 	"github.com/thommil/animals-go-auth/facebook"
 	"github.com/thommil/animals-go-auth/generic"
 	"github.com/thommil/animals-go-auth/google"
+	"github.com/thommil/animals-go-auth/resources"
+	"github.com/thommil/animals-go-common/api"
 	"github.com/thommil/animals-go-common/config"
-	"github.com/thommil/animals-go-common/model"
 )
 
 // Configuration definition for animals-go-auth
@@ -32,11 +33,6 @@ type Configuration struct {
 	}
 }
 
-// Provider interface to define API of authentication providers
-type Provider interface {
-	Authenticate(token string) (*model.User, error)
-}
-
 // Main of animals-go-ws
 func main() {
 	//Config
@@ -46,7 +42,7 @@ func main() {
 	}
 
 	//Authentication instances
-	providers := map[string]Provider{
+	providers := map[string]resources.Provider{
 		"generic":  generic.Provider{Configuration: &configuration.Providers.Generic},
 		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
 		"google":   google.Provider{Configuration: &configuration.Providers.Google},
@@ -55,9 +51,9 @@ func main() {
 	//HTTP Server
 	router := gin.Default()
 
-	//Middlewares
-	user, err := providers["generic"].Authenticate("toto")
-	fmt.Println(user.ID, err)
+	//Routes
+	authentication := &resources.Authentication{Providers: &providers, Resource: &api.Resource{Engine: router}}
+	authentication.ApplyRoutes()
 
 	//Start Server
 	var serverAddress strings.Builder
