@@ -10,8 +10,7 @@ import (
 	"github.com/thommil/animals-go-auth/facebook"
 	"github.com/thommil/animals-go-auth/generic"
 	"github.com/thommil/animals-go-auth/google"
-	"github.com/thommil/animals-go-auth/resources"
-	"github.com/thommil/animals-go-common/api"
+	"github.com/thommil/animals-go-auth/resources/authentication"
 	"github.com/thommil/animals-go-common/config"
 )
 
@@ -42,7 +41,7 @@ func main() {
 	}
 
 	//Authentication instances
-	providers := map[string]resources.Provider{
+	providers := map[string]authentication.Provider{
 		"generic":  generic.Provider{Configuration: &configuration.Providers.Generic},
 		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
 		"google":   google.Provider{Configuration: &configuration.Providers.Google},
@@ -51,9 +50,9 @@ func main() {
 	//HTTP Server
 	router := gin.Default()
 
-	//Routes
-	authentication := &resources.Authentication{Providers: &providers, Resource: &api.Resource{Engine: router}}
-	authentication.ApplyRoutes()
+	//Resources
+	authentication := authentication.New(router, providers)
+	authentication.Authenticate("test", "test")
 
 	//Start Server
 	var serverAddress strings.Builder
