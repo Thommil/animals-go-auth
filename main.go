@@ -7,8 +7,8 @@ import (
 
 	"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
+	"github.com/globalsign/mgo"
 	"github.com/thommil/animals-go-auth/facebook"
-	"github.com/thommil/animals-go-auth/generic"
 	"github.com/thommil/animals-go-auth/google"
 	"github.com/thommil/animals-go-auth/resources/authentication"
 	"github.com/thommil/animals-go-common/config"
@@ -25,8 +25,11 @@ type Configuration struct {
 		URL string
 	}
 
+	JWT struct {
+		Secret string
+	}
+
 	Providers struct {
-		Generic  generic.Configuration
 		Facebook facebook.Configuration
 		Google   google.Configuration
 	}
@@ -42,16 +45,22 @@ func main() {
 
 	//Provider instances
 	providers := map[string]authentication.Provider{
-		"generic":  generic.Provider{Configuration: &configuration.Providers.Generic},
 		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
 		"google":   google.Provider{Configuration: &configuration.Providers.Google},
 	}
+
+	//Mongo
+	session, err := mgo.Dial(configuration.Mongo.URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer session.Close()
 
 	//HTTP Server
 	router := gin.Default()
 
 	//Resources
-	authentication.New(router, providers)
+	authentication.New(router, providers, session.DB(""), configuration.JWT.Secret)
 
 	//Start Server
 	var serverAddress strings.Builder

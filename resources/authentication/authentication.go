@@ -2,6 +2,14 @@
 package authentication
 
 import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/dgrijalva/jwt-go"
+
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/thommil/animals-go-common/api"
 	"github.com/thommil/animals-go-common/model"
 
@@ -16,11 +24,13 @@ type Provider interface {
 type authentication struct {
 	group     *gin.RouterGroup
 	providers map[string]Provider
+	database  *mgo.Database
+	secret    string
 }
 
 // New creates new Routable implementation for authentication features
-func New(engine *gin.Engine, providers map[string]Provider) resource.Routable {
-	authentication := &authentication{group: engine.Group("/"), providers: providers}
+func New(engine *gin.Engine, providers map[string]Provider, database *mgo.Database, secret string) resource.Routable {
+	authentication := &authentication{group: engine.Group("/"), providers: providers, database: database, secret: secret}
 	{
 		authentication.group.POST("/public/authenticate", authentication.publicAuthenticate)
 		authentication.group.GET("/private/authenticate", authentication.privateAuthenticate)
@@ -34,6 +44,7 @@ func (authentication *authentication) GetGroup() *gin.RouterGroup {
 }
 
 func (authentication *authentication) publicAuthenticate(c *gin.Context) {
+	//c.BindJSON
 	//Check provider
 	// providerImpl, ok := authentication.providers[provider]
 	// if !ok {
@@ -43,5 +54,91 @@ func (authentication *authentication) publicAuthenticate(c *gin.Context) {
 }
 
 func (authentication *authentication) privateAuthenticate(c *gin.Context) {
-	//Check token
+	tokenString := c.GetHeader("Authentication")
+	// Check Authentication header
+	if strings.Contains(tokenString, "Bearer") {
+		tokenString = strings.TrimSpace(strings.Replace(tokenString, "Bearer", "", -1))
+		// Check token headers
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(authentication.secret), nil
+		})
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    http.StatusUnauthorized,
+				"message": err.Error(),
+			})
+		} else {
+			//Check token validity
+			if token.Valid {
+				//Check token claims
+				if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+					//Check user ID validity
+					if userID, ok := claims["sub"]; ok {
+						if user, err := authentication.getUser(userID.(string)); err != nil {
+							c.JSON(http.StatusUnauthorized, gin.H{
+								"code":    http.StatusUnauthorized,
+								"message": err.Error(),
+							})
+						} else {
+							c.JSON(http.StatusOK, user)
+						}
+					} else {
+						c.JSON(http.StatusUnauthorized, gin.H{
+							"code":    http.StatusUnauthorized,
+							"message": "Missing sub claim",
+						})
+					}
+				} else {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"code":    http.StatusUnauthorized,
+						"message": err.Error(),
+					})
+				}
+			} else if ve, ok := err.(*jwt.ValidationError); ok {
+				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"code":    http.StatusUnauthorized,
+						"message": "Token is invalid",
+					})
+				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"code":    http.StatusUnauthorized,
+						"message": "Token is expired",
+					})
+				} else {
+					c.JSON(http.StatusUnauthorized, gin.H{
+						"code":    http.StatusUnauthorized,
+						"message": err.Error(),
+					})
+				}
+			} else {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"code":    http.StatusUnauthorized,
+					"message": err.Error(),
+				})
+			}
+		}
+
+	} else {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    http.StatusUnauthorized,
+			"message": "No Bearer found",
+		})
+	}
+}
+
+func (authentication *authentication) getUser(id string) (*model.User, error) {
+	user := &model.User{}
+	if bson.IsObjectIdHex(id) {
+		err := authentication.database.C("user").FindId(bson.ObjectIdHex(id)).One(user)
+		if err != nil {
+			return nil, err
+		}
+		return user, nil
+	}
+	return nil, fmt.Errorf("Invalid user ID")
 }
