@@ -40,7 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//Authentication instances
+	//Provider instances
 	providers := map[string]authentication.Provider{
 		"generic":  generic.Provider{Configuration: &configuration.Providers.Generic},
 		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
@@ -51,8 +51,7 @@ func main() {
 	router := gin.Default()
 
 	//Resources
-	authentication := authentication.New(router, providers)
-	authentication.Authenticate("test", "test")
+	authentication.New(router, providers)
 
 	//Start Server
 	var serverAddress strings.Builder
