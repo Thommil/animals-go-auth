@@ -13,6 +13,6 @@ type Provider struct {
 }
 
 // Authenticate implementation of Authentication API
-func (provider Provider) Authenticate(token string) (*model.User, error) {
+func (provider Provider) Authenticate(credentials interface{}) (*model.User, error) {
 	return nil, nil
 }

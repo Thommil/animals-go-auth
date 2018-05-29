@@ -1,8 +1,6 @@
 package google
 
-import (
-	"github.com/thommil/animals-go-common/model"
-)
+import "github.com/thommil/animals-go-common/model"
 
 // Configuration definition for facebook providers
 type Configuration struct{}
@@ -13,6 +11,6 @@ type Provider struct {
 }
 
 // Authenticate implementation of Provider API
-func (provider Provider) Authenticate(token string) (*model.User, error) {
+func (provider Provider) Authenticate(credentials interface{}) (*model.User, error) {
 	return nil, nil
 }
