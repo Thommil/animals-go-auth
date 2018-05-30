@@ -25,9 +25,7 @@ type Configuration struct {
 		URL string
 	}
 
-	JWT struct {
-		Secret string
-	}
+	JWT authentication.JWTSettings
 
 	Providers struct {
 		Facebook facebook.Configuration
@@ -60,7 +58,7 @@ func main() {
 	router := gin.Default()
 
 	//Resources
-	authentication.New(router, providers, session.DB(""), configuration.JWT.Secret)
+	authentication.New(router, providers, session.DB(""), &configuration.JWT)
 
 	//Start Server
 	var serverAddress strings.Builder
