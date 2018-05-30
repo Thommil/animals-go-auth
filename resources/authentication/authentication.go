@@ -4,6 +4,7 @@ package authentication
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -22,7 +23,7 @@ type Provider interface {
 // JWTSettings defines JWT configuration
 type JWTSettings struct {
 	Secret  string
-	Expired int
+	Expired time.Duration
 }
 
 type authentication struct {
@@ -36,7 +37,7 @@ type authentication struct {
 func New(engine *gin.Engine, providers map[string]Provider, database *mgo.Database, jwtSettings *JWTSettings) resource.Routable {
 	authentication := &authentication{group: engine.Group("/"), providers: providers, database: database, jwtSettings: jwtSettings}
 	{
-		authentication.group.POST("/public/authenticate", authentication.publicAuthenticate)
+		authentication.group.GET("/public/authenticate/:provider/:tokenString", authentication.publicAuthenticate)
 		authentication.group.GET("/private/authenticate/:tokenString", authentication.privateAuthenticate)
 	}
 	return authentication
@@ -48,6 +49,16 @@ func (authentication *authentication) GetGroup() *gin.RouterGroup {
 }
 
 func (authentication *authentication) publicAuthenticate(c *gin.Context) {
+	provider := c.Param("provider")
+	tokenString := c.Param("tokenString")
+	if user, err := authentication.providers[provider].Authenticate(tokenString); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    http.StatusUnauthorized,
+			"message": err.Error(),
+		})
+	} else {
+		c.JSON(http.StatusOK, user)
+	}
 	//c.BindJSON
 	//Check provider
 	// providerImpl, ok := authentication.providers[provider]

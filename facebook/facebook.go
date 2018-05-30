@@ -1,6 +1,7 @@
 package facebook
 
 import (
+	"github.com/globalsign/mgo"
 	"github.com/thommil/animals-go-common/model"
 )
 
@@ -9,6 +10,7 @@ type Configuration struct{}
 
 // Provider allows to check user entry against OAuth2 FB API
 type Provider struct {
+	Database      *mgo.Database
 	Configuration *Configuration
 }
 

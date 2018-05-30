@@ -41,12 +41,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//Provider instances
-	providers := map[string]authentication.Provider{
-		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
-		"google":   google.Provider{Configuration: &configuration.Providers.Google},
-	}
-
 	//Mongo
 	session, err := mgo.Dial(configuration.Mongo.URL)
 	if err != nil {
@@ -56,6 +50,12 @@ func main() {
 
 	//HTTP Server
 	router := gin.Default()
+
+	//Provider instances
+	providers := map[string]authentication.Provider{
+		"facebook": facebook.Provider{Database: session.DB(""), Configuration: &configuration.Providers.Facebook},
+		"google":   google.Provider{Database: session.DB(""), Configuration: &configuration.Providers.Google},
+	}
 
 	//Resources
 	authentication.New(router, providers, session.DB(""), &configuration.JWT)
