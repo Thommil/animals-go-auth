@@ -24,6 +24,13 @@ type Provider interface {
 type JWTSettings struct {
 	Secret  string
 	Expired time.Duration
+	Issuer  string
+}
+
+// JWT token used bu local authentication (private)
+type JWT struct {
+	Token     string
+	ExpiresAt int64
 }
 
 type authentication struct {
@@ -57,16 +64,23 @@ func (authentication *authentication) publicAuthenticate(c *gin.Context) {
 			"message": err.Error(),
 		})
 	} else {
-		c.JSON(http.StatusOK, user)
+		claims := &jwt.StandardClaims{
+			Subject:   user.ID.Hex(),
+			Issuer:    authentication.jwtSettings.Issuer,
+			ExpiresAt: time.Now().Add(time.Second * authentication.jwtSettings.Expired).Unix(),
+			IssuedAt:  time.Now().Unix(),
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		if ss, err := token.SignedString([]byte(authentication.jwtSettings.Secret)); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    http.StatusUnauthorized,
+				"message": err.Error(),
+			})
+		} else {
+			c.JSON(http.StatusOK, JWT{Token: ss, ExpiresAt: claims.ExpiresAt})
+		}
 	}
-	//c.BindJSON
-	//Check provider
-	// providerImpl, ok := authentication.providers[provider]
-	// if !ok {
-	// 	return nil, fmt.Errorf("provider '%s' not found", provider)
-	// }
-	// return providerImpl.Authenticate(token)
-	//tokenString = strings.TrimSpace(strings.Replace(tokenString, "Bearer", "", -1))
 }
 
 func (authentication *authentication) privateAuthenticate(c *gin.Context) {

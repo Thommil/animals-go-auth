@@ -50,12 +50,14 @@ func (provider Provider) Authenticate(credentials interface{}) (*model.User, err
 	response, err := httpClient.Get(strings.Replace(provider.Configuration.URL, ":idToken", credentials.(string), 1))
 	if err != nil {
 		return nil, err
+	} else if response.StatusCode >= http.StatusBadRequest {
+		return nil, fmt.Errorf("Google error %d", response.StatusCode)
 	}
 
 	defer response.Body.Close()
 	token := &tokenInfo{}
 	json.NewDecoder(response.Body).Decode(token)
-	if token.ISS == provider.Configuration.ISS && token.AUD == provider.Configuration.AUD {
+	if strings.Contains(token.ISS, provider.Configuration.ISS) && token.AUD == provider.Configuration.AUD {
 		query := model.FindAccount(provider.Database, &model.Account{ExternalID: token.SUB})
 		count, err := query.Count()
 		if err != nil {
@@ -71,7 +73,7 @@ func (provider Provider) Authenticate(credentials interface{}) (*model.User, err
 		}
 
 		//Not found, create account & user
-		user, err := model.CreateOrUpdateUser(provider.Database, &model.User{Username: token.Name})
+		user, err := model.CreateOrUpdateUser(provider.Database, &model.User{Username: token.Name, Picture: token.Picture, Locale: token.Locale})
 		if err != nil {
 			return nil, err
 		}
