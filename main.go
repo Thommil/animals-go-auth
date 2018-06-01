@@ -5,11 +5,12 @@ import (
 	"log"
 	"strings"
 
+	"github.com/thommil/animals-go-common/dao/mongo"
+
 	"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
-	"github.com/globalsign/mgo"
-	"github.com/thommil/animals-go-auth/facebook"
-	"github.com/thommil/animals-go-auth/google"
+	"github.com/thommil/animals-go-auth/providers/facebook"
+	"github.com/thommil/animals-go-auth/providers/google"
 	"github.com/thommil/animals-go-auth/resources/authentication"
 	"github.com/thommil/animals-go-common/config"
 )
@@ -21,9 +22,7 @@ type Configuration struct {
 		Port int
 	}
 
-	Mongo struct {
-		URL string
-	}
+	Mongo mongo.Configuration
 
 	JWT authentication.JWTSettings
 
@@ -42,7 +41,7 @@ func main() {
 	}
 
 	//Mongo
-	session, err := mgo.Dial(configuration.Mongo.URL)
+	session, err := mongo.NewInstance(&configuration.Mongo)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,12 +52,12 @@ func main() {
 
 	//Provider instances
 	providers := map[string]authentication.Provider{
-		"facebook": facebook.Provider{Database: session.DB(""), Configuration: &configuration.Providers.Facebook},
-		"google":   google.Provider{Database: session.DB(""), Configuration: &configuration.Providers.Google},
+		"facebook": facebook.Provider{Configuration: &configuration.Providers.Facebook},
+		"google":   google.Provider{Configuration: &configuration.Providers.Google},
 	}
 
 	//Resources
-	authentication.New(router, providers, session.DB(""), &configuration.JWT)
+	authentication.New(router, providers, &configuration.JWT)
 
 	//Start Server
 	var serverAddress strings.Builder

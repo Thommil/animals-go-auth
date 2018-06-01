@@ -8,7 +8,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
-	"github.com/globalsign/mgo"
 	"github.com/thommil/animals-go-common/api"
 	"github.com/thommil/animals-go-common/model"
 
@@ -36,13 +35,12 @@ type JWT struct {
 type authentication struct {
 	group       *gin.RouterGroup
 	providers   map[string]Provider
-	database    *mgo.Database
 	jwtSettings *JWTSettings
 }
 
 // New creates new Routable implementation for authentication features
-func New(engine *gin.Engine, providers map[string]Provider, database *mgo.Database, jwtSettings *JWTSettings) resource.Routable {
-	authentication := &authentication{group: engine.Group("/"), providers: providers, database: database, jwtSettings: jwtSettings}
+func New(engine *gin.Engine, providers map[string]Provider, jwtSettings *JWTSettings) resource.Routable {
+	authentication := &authentication{group: engine.Group("/"), providers: providers, jwtSettings: jwtSettings}
 	{
 		authentication.group.GET("/public/authenticate/:provider/:tokenString", authentication.publicAuthenticate)
 		authentication.group.GET("/private/authenticate/:tokenString", authentication.privateAuthenticate)
@@ -105,7 +103,7 @@ func (authentication *authentication) privateAuthenticate(c *gin.Context) {
 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 				//Check user ID validity
 				if userID, ok := claims["sub"]; ok {
-					if user, err := model.FindUserByID(authentication.database, userID.(string)); err != nil {
+					if user, err := model.FindUserByID(userID.(string)); err != nil {
 						c.JSON(http.StatusUnauthorized, gin.H{
 							"code":    http.StatusUnauthorized,
 							"message": err.Error(),

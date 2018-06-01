@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/thommil/animals-go-common/model"
 )
 
@@ -39,7 +38,6 @@ type tokenInfo struct {
 
 // Provider allows to check user entry against Google JWT token
 type Provider struct {
-	Database      *mgo.Database
 	Configuration *Configuration
 }
 
@@ -58,7 +56,7 @@ func (provider Provider) Authenticate(credentials interface{}) (*model.User, err
 	token := &tokenInfo{}
 	json.NewDecoder(response.Body).Decode(token)
 	if strings.Contains(token.ISS, provider.Configuration.ISS) && token.AUD == provider.Configuration.AUD {
-		query := model.FindAccount(provider.Database, &model.Account{ExternalID: token.SUB})
+		query := model.FindAccount(&model.Account{ExternalID: token.SUB})
 		count, err := query.Count()
 		if err != nil {
 			return nil, err
@@ -69,15 +67,15 @@ func (provider Provider) Authenticate(credentials interface{}) (*model.User, err
 			if query.One(account) != nil {
 				return nil, err
 			}
-			return model.FindUserByID(provider.Database, account.UserID)
+			return model.FindUserByID(account.UserID)
 		}
 
 		//Not found, create account & user
-		user, err := model.CreateOrUpdateUser(provider.Database, &model.User{Username: token.Name, Picture: token.Picture, Locale: token.Locale})
+		user, err := model.CreateOrUpdateUser(&model.User{Username: token.Name, Picture: token.Picture, Locale: token.Locale})
 		if err != nil {
 			return nil, err
 		}
-		model.CreateOrUpdateAccount(provider.Database, &model.Account{Provider: "google", ExternalID: token.SUB, UserID: user.ID.Hex()})
+		model.CreateOrUpdateAccount(&model.Account{Provider: "google", ExternalID: token.SUB, UserID: user.ID.Hex()})
 		return user, nil
 	}
 	return nil, fmt.Errorf("Bad 'iss' or 'aud' claim in Google token")
