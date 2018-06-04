@@ -21,9 +21,9 @@ type Provider interface {
 
 // JWTSettings defines JWT configuration
 type JWTSettings struct {
-	Secret  string
-	Expired time.Duration
-	Issuer  string
+	Secret  string        `json:"secret"`
+	Expired time.Duration `json:"expired"`
+	Issuer  string        `json:"issuer"`
 }
 
 // JWT token used bu local authentication (private)

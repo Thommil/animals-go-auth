@@ -18,8 +18,8 @@ import (
 // Configuration definition for animals-go-auth
 type Configuration struct {
 	HTTP struct {
-		Host string
-		Port int
+		Host string `json:"host"`
+		Port int    `json:"port"`
 	}
 
 	Mongo mongo.Configuration

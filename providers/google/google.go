@@ -13,11 +13,11 @@ import (
 // Configuration definition for facebook providers
 type Configuration struct {
 	// URL used to check token (:idToken replaced)
-	URL string
+	URL string `json:"url"`
 	// Issuer to check
-	ISS string
+	ISS string `json:"iss"`
 	// Audience to check
-	AUD string
+	AUD string `json:"aud"`
 }
 
 type tokenInfo struct {
